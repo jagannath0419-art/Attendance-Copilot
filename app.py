@@ -108,6 +108,42 @@ def parse_date(value):
         return None
 
 
+def _column_exists(cursor, table, column):
+    """Checks INFORMATION_SCHEMA to see if a column already exists on a table."""
+    cursor.execute(
+        """
+        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s
+        """,
+        (table, column),
+    )
+    return cursor.fetchone()[0] > 0
+
+
+def _ensure_default_month(cursor, user_id):
+    """Ensures the given user has at least one month tab, creating a default one
+    (named after the current month) if none exist yet. Also backfills any legacy
+    subjects created before monthly tabs existed (month_id IS NULL) into that
+    first month. Expects a DictCursor. Returns the id of the user's first month.
+    """
+    cursor.execute("SELECT id FROM months WHERE user_id = %s ORDER BY id ASC LIMIT 1", (user_id,))
+    row = cursor.fetchone()
+    if row:
+        first_month_id = row["id"]
+    else:
+        default_name = datetime.now().strftime("%B %Y")
+        cursor.execute(
+            "INSERT INTO months (user_id, month_name, start_date, end_date) VALUES (%s, %s, NULL, NULL)",
+            (user_id, default_name),
+        )
+        first_month_id = cursor.lastrowid
+    cursor.execute(
+        "UPDATE subjects SET month_id = %s WHERE user_id = %s AND month_id IS NULL",
+        (first_month_id, user_id),
+    )
+    return first_month_id
+
+
 def init_db_schema():
     """Idempotently ensures that all database tables exist. Safe to run on every boot."""
     cursor = mysql.connection.cursor()
@@ -140,6 +176,28 @@ def init_db_schema():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB;
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS months (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                month_name VARCHAR(100) NOT NULL,
+                start_date DATE,
+                end_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB;
+        """)
+        # subjects.month_id is added via ALTER TABLE (rather than in the CREATE TABLE
+        # above) so that installs with a pre-existing subjects table get the column too.
+        if not _column_exists(cursor, "subjects", "month_id"):
+            cursor.execute("ALTER TABLE subjects ADD COLUMN month_id INT NULL")
+            cursor.execute(
+                """
+                ALTER TABLE subjects
+                ADD CONSTRAINT fk_subjects_month
+                FOREIGN KEY (month_id) REFERENCES months(id) ON DELETE CASCADE
+                """
+            )
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS attendance_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -208,11 +266,36 @@ def calculate_subject_analytics(sub, target_goal):
 @app.route("/")
 def home():
     processed_subjects = []
+    months_list = []
     global_metrics = {"avg": 0, "total_cond": 0, "total_att": 0, "defaulters": 0, "safe": 0}
 
     if "user_id" in session:
         cursor = get_cursor(dict_cursor=True)
         try:
+            # Guarantees a "Month 1" tab exists and pulls any legacy (pre-monthly-tabs)
+            # subjects into it, so nothing becomes invisible after this feature ships.
+            _ensure_default_month(cursor, session["user_id"])
+            mysql.connection.commit()
+        except Exception:
+            logger.exception("Error ensuring default month for user_id=%s", session.get("user_id"))
+        finally:
+            cursor.close()
+
+        cursor = get_cursor(dict_cursor=True)
+        try:
+            cursor.execute("SELECT * FROM months WHERE user_id = %s ORDER BY id ASC", (session["user_id"],))
+            months_list = cursor.fetchall()
+        except Exception:
+            logger.exception("Error fetching months for dashboard")
+            months_list = []
+        finally:
+            cursor.close()
+
+        cursor = get_cursor(dict_cursor=True)
+        try:
+            # Overall/cumulative metrics intentionally sum ALL subjects across ALL
+            # months for this user (not filtered to the active tab) — this is what
+            # drives the "Overall Attendance % (All Months Combined)" summary.
             cursor.execute("SELECT * FROM subjects WHERE user_id = %s", (session["user_id"],))
             raw_subjects = cursor.fetchall()
         except Exception:
@@ -248,7 +331,13 @@ def home():
             "safe": safe_count,
         }
 
-    return render_template("index.html", subjects=processed_subjects, metrics=global_metrics)
+    return render_template(
+        "index.html",
+        subjects=processed_subjects,
+        metrics=global_metrics,
+        months=months_list,
+        first_month_id=(months_list[0]["id"] if months_list else None),
+    )
 
 
 @app.route("/auth/register", methods=["POST"])
@@ -369,6 +458,7 @@ def _extract_subject_form():
         "theory_attended": parse_int(request.form.get("theory_attended"), default=0, min_val=0),
         "labs_conducted": parse_int(request.form.get("labs_conducted"), default=0, min_val=0),
         "labs_attended": parse_int(request.form.get("labs_attended"), default=0, min_val=0),
+        "month_id": parse_int(request.form.get("month_id"), default=0, min_val=0),
     }
 
 
@@ -381,24 +471,95 @@ def add_subject():
     if not data["subject_name"]:
         return redirect(url_for("home"))
 
-    cursor = get_cursor()
+    cursor = get_cursor(dict_cursor=True)
     try:
+        # Trust the submitted month_id only if it's a real month owned by this user;
+        # otherwise fall back to (and auto-create if needed) their first month tab.
+        month_id = data["month_id"]
+        if month_id:
+            cursor.execute("SELECT id FROM months WHERE id = %s AND user_id = %s", (month_id, session["user_id"]))
+            if not cursor.fetchone():
+                month_id = 0
+        if not month_id:
+            month_id = _ensure_default_month(cursor, session["user_id"])
+
         query = """
             INSERT INTO subjects (
                 user_id, subject_name, structure_type, active_month,
                 start_date, end_date, color_theme, attendance_target,
-                theory_conducted, theory_attended, labs_conducted, labs_attended
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                theory_conducted, theory_attended, labs_conducted, labs_attended, month_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         values = (
             session["user_id"], data["subject_name"], data["structure_type"], data["active_month"],
             data["start_date"], data["end_date"], data["color_theme"], data["attendance_target"],
             data["theory_conducted"], data["theory_attended"], data["labs_conducted"], data["labs_attended"],
+            month_id,
         )
         cursor.execute(query, values)
         mysql.connection.commit()
     except Exception:
         logger.exception("Error adding subject for user_id=%s", session.get("user_id"))
+    finally:
+        cursor.close()
+
+    return redirect(url_for("home"))
+
+
+@app.route("/add_month", methods=["POST"])
+def add_month():
+    """Creates a new month tab, then replicates the subject structure (name, type,
+    theme, target) from the user's first month into it with attendance counters
+    reset to zero — new month, same subjects, clean slate.
+    """
+    if "user_id" not in session:
+        return redirect(url_for("home"))
+
+    month_name = (request.form.get("month_name") or "").strip()[:100]
+    start_date = parse_date(request.form.get("start_date"))
+    end_date = parse_date(request.form.get("end_date"))
+
+    if not month_name:
+        return redirect(url_for("home"))
+
+    cursor = get_cursor(dict_cursor=True)
+    try:
+        first_month_id = _ensure_default_month(cursor, session["user_id"])
+
+        cursor.execute(
+            "INSERT INTO months (user_id, month_name, start_date, end_date) VALUES (%s, %s, %s, %s)",
+            (session["user_id"], month_name, start_date, end_date),
+        )
+        new_month_id = cursor.lastrowid
+
+        cursor.execute(
+            """
+            SELECT subject_name, structure_type, active_month, color_theme, attendance_target
+            FROM subjects WHERE user_id = %s AND month_id = %s
+            """,
+            (session["user_id"], first_month_id),
+        )
+        source_subjects = cursor.fetchall()
+
+        for sub in source_subjects:
+            cursor.execute(
+                """
+                INSERT INTO subjects (
+                    user_id, subject_name, structure_type, active_month,
+                    start_date, end_date, color_theme, attendance_target,
+                    theory_conducted, theory_attended, labs_conducted, labs_attended, month_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, 0, 0, 0, %s)
+                """,
+                (
+                    session["user_id"], sub["subject_name"], sub["structure_type"], sub["active_month"],
+                    start_date, end_date, sub["color_theme"], sub["attendance_target"],
+                    new_month_id,
+                ),
+            )
+
+        mysql.connection.commit()
+    except Exception:
+        logger.exception("Error adding month for user_id=%s", session.get("user_id"))
     finally:
         cursor.close()
 

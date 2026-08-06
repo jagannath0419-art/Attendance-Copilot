@@ -92,7 +92,7 @@
         <div class="bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-center">
             <div>
                 <span class="text-[9px] bg-indigo-50 text-indigo-600 font-extrabold uppercase tracking-widest px-2.5 py-1.5 rounded-md">Dashboard Overview</span>
-                <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-3">Semester Attendance Average</h3>
+                <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-3">Overall Attendance % (All Months Combined)</h3>
                 <!-- Real-time dynamic date badge widget -->
                 <p id="live-dashboard-date" class="text-xs font-bold text-indigo-600 mt-1.5 flex items-center gap-1.5 bg-indigo-50 w-fit px-3 py-1 rounded-lg">
                     📅 Loading current date...
@@ -136,6 +136,25 @@
             </div>
         </div>
 
+        <!-- MONTHLY TAB NAVIGATION -->
+        <div class="flex flex-wrap items-center gap-2 pt-2" id="month-tabs-container">
+            {% if session.get('user_id') %}
+                {% for m in months %}
+                <button type="button"
+                    class="month-tab-btn px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold border transition touch-manipulation {% if loop.first %}bg-indigo-600 text-white border-indigo-600 active-month-tab{% else %}bg-white text-slate-600 border-slate-200 hover:bg-slate-50{% endif %}"
+                    data-month-id="{{ m.id }}">
+                    {{ m.month_name }}
+                </button>
+                {% endfor %}
+                <button type="button" id="open-month-modal" class="px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold border border-dashed border-indigo-300 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition touch-manipulation">
+                    + Add Month
+                </button>
+            {% else %}
+                <button type="button" class="px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white border border-indigo-600">Month 1</button>
+                <button type="button" class="px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold border border-dashed border-indigo-300 text-indigo-600 bg-indigo-50">+ Add Month</button>
+            {% endif %}
+        </div>
+
         <!-- TRACKED SUBJECTS SECTION HEADER -->
         <div class="flex flex-wrap justify-between items-center gap-3 pt-2">
             <h3 class="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
@@ -161,7 +180,7 @@
                 <!-- LOGGED IN STATE -->
                 {% if subjects %}
                     {% for sub in subjects %}
-                    <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all duration-200" data-status="{{ sub.calculated_status }}">
+                    <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all duration-200" data-status="{{ sub.calculated_status }}" data-month-id="{{ sub.month_id }}">
                         <div>
                             <!-- Title & Categories -->
                             <div class="flex justify-between items-start">
@@ -446,6 +465,7 @@
             
             <form action="/add_subject" method="POST" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="month_id" id="add-sub-month-id" value="{{ first_month_id or '' }}">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Subject Name</label>
                     <input type="text" name="subject_name" required placeholder="e.g., Computational Theory" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
@@ -643,6 +663,41 @@
         </div>
     </div>
 
+    <!-- NEW MODAL POPUP G: ADD MONTH MODAL -->
+    <div id="month-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform transition-all duration-300">
+            <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-black">Add New Month</h3>
+                    <p class="text-xs text-indigo-200 mt-0.5">Creates a new tab and copies your subjects with attendance reset to zero.</p>
+                </div>
+                <button id="close-month-modal-x" class="text-2xl font-bold opacity-75 hover:opacity-100 transition focus:outline-none">&times;</button>
+            </div>
+
+            <form action="/add_month" method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Month Name</label>
+                    <input type="text" name="month_name" required placeholder="e.g., March 2026" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
+                        <input type="date" name="start_date" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
+                        <input type="date" name="end_date" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    </div>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" id="close-month-modal" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition touch-manipulation">Cancel</button>
+                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition touch-manipulation shadow-md">Create Month</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL POPUP D: EDIT PROFILE MODAL -->
     <div id="profile-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden">
@@ -832,22 +887,62 @@
             btnTriggerAuth.addEventListener('click', () => toggleModal('auth-modal', true));
         }
 
-        // Subject status cards filters
+        // Subject status + active month tab filters (combined)
         const statusFilter = document.getElementById('status-filter');
-        if(statusFilter) {
-            statusFilter.addEventListener('change', (e) => {
-                const choice = e.target.value;
-                const cards = document.querySelectorAll('#subject-cards-grid > div');
-                cards.forEach(card => {
-                    const status = card.getAttribute('data-status');
-                    if(choice === 'All' || status === choice) {
-                        card.classList.remove('hidden');
-                    } else {
-                        card.classList.add('hidden');
-                    }
-                });
+        const monthTabButtons = document.querySelectorAll('.month-tab-btn');
+        let activeMonthId = monthTabButtons.length ? monthTabButtons[0].getAttribute('data-month-id') : null;
+
+        function applyCardFilters() {
+            const statusChoice = statusFilter ? statusFilter.value : 'All';
+            const cards = document.querySelectorAll('#subject-cards-grid > div[data-status]');
+            cards.forEach(card => {
+                const status = card.getAttribute('data-status');
+                const cardMonthId = card.getAttribute('data-month-id');
+                const statusMatch = (statusChoice === 'All' || status === statusChoice);
+                const monthMatch = (!activeMonthId || cardMonthId === activeMonthId);
+                if (statusMatch && monthMatch) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
             });
         }
+
+        if(statusFilter) {
+            statusFilter.addEventListener('change', applyCardFilters);
+        }
+
+        // Month tab switching: highlights the active tab, filters subject cards,
+        // and points the "Add Subject" form at whichever month tab is currently open.
+        const addSubMonthIdInput = document.getElementById('add-sub-month-id');
+
+        function setActiveMonthTab(activeBtn) {
+            monthTabButtons.forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600', 'active-month-tab');
+                b.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            });
+            activeBtn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+            activeBtn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600', 'active-month-tab');
+        }
+
+        monthTabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeMonthId = btn.getAttribute('data-month-id');
+                setActiveMonthTab(btn);
+                if (addSubMonthIdInput) addSubMonthIdInput.value = activeMonthId;
+                applyCardFilters();
+            });
+        });
+
+        applyCardFilters();
+
+        // Add Month Modal triggers
+        const btnAddMonth = document.getElementById('open-month-modal');
+        if(btnAddMonth) btnAddMonth.addEventListener('click', () => toggleModal('month-modal', true));
+        const btnCloseMonthX = document.getElementById('close-month-modal-x');
+        if(btnCloseMonthX) btnCloseMonthX.addEventListener('click', () => toggleModal('month-modal', false));
+        const btnCloseMonth = document.getElementById('close-month-modal');
+        if(btnCloseMonth) btnCloseMonth.addEventListener('click', () => toggleModal('month-modal', false));
 
         // Open detailed date/time log popup for incrementing classes (+ triggers)
         function openSessionLogPopup(subjectId, fieldName) {
