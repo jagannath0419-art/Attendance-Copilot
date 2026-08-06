@@ -1,60 +1,94 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Smart Attendance Co-Pilot</title>
+    <title>Smart Attendance Co-Pilot - Dashboard</title>
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
                         brand: {
-                            dark: '#1f1248',
-                            purple: '#2c125d',
-                            lightPurple: '#ebf4ff',
-                            teal: '#10b981',
+                            50: '#f0f3ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#1e1b4b',
+                            dark: '#0f0c1b',
+                            cardDark: '#1a162b'
                         }
+                    },
+                    boxShadow: {
+                        'glow': '0 0 25px -5px rgba(79, 70, 229, 0.25)',
+                        'glow-emerald': '0 0 25px -5px rgba(16, 185, 129, 0.25)',
+                        'glow-rose': '0 0 25px -5px rgba(244, 63, 94, 0.25)',
                     }
                 }
             }
         }
     </script>
-    <!-- PWA Meta Tags -->
+    
+    <!-- Chart.js CDN for Visual Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- PWA & Web App Meta Tags -->
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#1f1248">
+    <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
-</head>
-<body class="bg-[#f0f4fa] min-h-screen text-slate-800 font-sans flex flex-col selection:bg-indigo-100">
 
-    <!-- GLOBAL HEADER NAVIGATION -->
-    <header class="bg-brand-dark text-white shadow-lg py-3 sm:py-4 px-4 sm:px-6 sticky top-0 z-40">
-        <div class="container mx-auto flex flex-wrap justify-between items-center gap-y-3 gap-x-3">
-            <!-- Brand Logo & Header -->
-            <div class="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-                <div class="bg-indigo-600 p-1.5 sm:p-2 rounded-xl text-base sm:text-lg shadow-md shadow-indigo-900/50 shrink-0">🎯</div>
-                <div class="min-w-0">
-                    <h1 class="text-base sm:text-xl font-black tracking-tight leading-none truncate">Attendance Tracker</h1>
-                    <span class="text-[9px] sm:text-[11px] text-indigo-300 font-semibold tracking-wider uppercase hidden xs:inline sm:inline">Smart Attendance Co-Pilot</span>
+    <style>
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.03); }
+        }
+        .pulse-glow { animation: pulseGlow 3s infinite ease-in-out; }
+        
+        /* Custom sleek scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.5); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-brand-dark text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-300 selection:bg-indigo-500 selection:text-white">
+
+    <header class="bg-white/80 dark:bg-brand-cardDark/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 sticky top-0 z-40 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-glow text-xl font-black">
+                    🎯
+                </div>
+                <div>
+                    <span class="text-lg font-black tracking-tight text-slate-900 dark:text-white block leading-none">Attendance Co-Pilot</span>
+                    <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-widest">Academic Predictor</span>
                 </div>
             </div>
-            
-            <!-- Action Navigation Controls -->
-            <div class="flex items-center gap-2 sm:space-x-3 flex-wrap justify-end">
+
+            <!-- Action Controls & User Profile Bar -->
+            <div class="flex items-center space-x-3">
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle-btn" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                    <span id="theme-toggle-icon" class="text-base">🌙</span>
+                </button>
+
                 {% if session.get('user_id') %}
-                    <button id="open-subject-modal" class="bg-indigo-600 hover:bg-indigo-700 text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all shadow-md shadow-indigo-900/40 touch-manipulation">
-                        + Add Subject
+                    <button id="open-subject-modal" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-glow flex items-center gap-1.5">
+                        <span class="text-sm">+</span> Add Subject
                     </button>
-                    <a href="/auth/logout" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all touch-manipulation">
+                    <a href="/auth/logout" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold px-3.5 py-2.5 rounded-xl transition">
                         Logout
                     </a>
                 {% else %}
-                    <button id="trigger-auth" class="bg-indigo-600 hover:bg-indigo-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-900/40 touch-manipulation">
+                    <button id="trigger-auth" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-glow">
                         Sign In / Register
                     </button>
                 {% endif %}
@@ -62,91 +96,128 @@
         </div>
     </header>
 
-    <!-- MAIN DASHBOARD CONTENT PANEL -->
-    <main class="container mx-auto px-4 my-8 flex-grow max-w-5xl space-y-6 {% if not session.get('user_id') %}blur-md pointer-events-none select-none duration-500{% endif %}">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-8 flex-grow space-y-8 w-full {% if not session.get('user_id') %}blur-sm pointer-events-none select-none duration-500{% endif %}">
         
-        <!-- STUDENT PROFILE CARD -->
-        <div class="bg-gradient-to-r from-[#1d0d3c] via-[#2d185c] to-[#14072b] rounded-3xl p-5 sm:p-6 shadow-xl relative border border-purple-950/40 text-white flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-            <div class="space-y-2 sm:space-y-3 min-w-0">
-                <span class="text-[10px] bg-indigo-600 text-indigo-50 font-black uppercase tracking-widest px-2.5 py-1 rounded-md">Student Profile Card</span>
-                <h2 class="text-xl sm:text-3xl font-black tracking-wide flex items-center gap-2 truncate">
-                    ⚡️ <span id="profile-name" class="truncate">{{ session.get('fullname', 'Jagannath Ansurkar') }}</span>
-                </h2>
-                <div class="flex flex-wrap gap-3 sm:gap-4 text-xs font-bold text-slate-300">
-                    <span class="flex items-center gap-1.5">
-                        📁 <span id="profile-dept">{{ session.get('department', 'Computer Engineering') }}</span>
-                    </span>
-                    <span class="flex items-center gap-1.5">
-                        🗓️ <span id="profile-sem">{{ session.get('semester', 'Semester 6') }}</span>
-                    </span>
-                </div>
-            </div>
-            {% if session.get('user_id') %}
-            <button id="edit-profile-btn" class="bg-white/10 border border-white/10 hover:bg-white/20 text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 touch-manipulation">
-                ✏️ Edit Profile
-            </button>
-            {% endif %}
-        </div>
-
-        <!-- DASHBOARD OVERVIEW METRICS BLOCK -->
-        <div class="bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-center">
-            <div>
-                <span class="text-[9px] bg-indigo-50 text-indigo-600 font-extrabold uppercase tracking-widest px-2.5 py-1.5 rounded-md">Dashboard Overview</span>
-                <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-3">Semester Attendance Average</h3>
-                <!-- Real-time dynamic date badge widget -->
-                <p id="live-dashboard-date" class="text-xs font-bold text-indigo-600 mt-1.5 flex items-center gap-1.5 bg-indigo-50 w-fit px-3 py-1 rounded-lg">
-                    📅 Loading current date...
-                </p>
-                <p class="text-xs text-slate-400 mt-2">Track and adjust variables to clear your academic criteria smoothly.</p>
-            </div>
+        <!-- STUDENT PROFILE BANNER CARD -->
+        <div class="bg-gradient-to-r from-indigo-900 via-brand-900 to-purple-950 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden border border-indigo-500/20 text-white">
+            <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
             
-            <div class="md:col-span-2 grid grid-cols-3 gap-2 sm:gap-4">
-                <!-- Average Circle -->
-                <div class="bg-slate-50 border border-slate-100 p-2.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-left">
-                    <div class="relative flex items-center justify-center shrink-0">
-                        <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-4 border-indigo-600 flex items-center justify-center font-black text-[11px] sm:text-sm text-indigo-600 bg-indigo-50/50">
-                            <span id="metric-percentage">{{ metrics.avg if session.get('user_id') else '73' }}%</span>
-                        </div>
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black uppercase tracking-widest px-3 py-1 rounded-full">
+                            Student Profile Dashboard
+                        </span>
+                        <span id="live-time-badge" class="text-[10px] bg-white/10 text-slate-300 font-semibold px-2.5 py-1 rounded-full">
+                            🕒 Synchronized
+                        </span>
                     </div>
+
+                    <h2 class="text-3xl sm:text-4xl font-black tracking-tight flex items-center gap-3">
+                        👋 <span id="profile-name">{{ session.get('fullname', 'Jagannath Ansurkar') }}</span>
+                    </h2>
+
+                    <div class="flex flex-wrap gap-4 text-xs font-semibold text-indigo-200">
+                        <span class="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                            🎓 <span id="profile-dept">{{ session.get('department', 'Computer Engineering') }}</span>
+                        </span>
+                        <span class="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                            📚 <span id="profile-sem">{{ session.get('semester', 'Semester 6') }}</span>
+                        </span>
+                    </div>
+                </div>
+
+                {% if session.get('user_id') %}
+                <div class="flex items-center gap-3">
+                    <button id="edit-profile-btn" class="bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold px-4 py-3 rounded-2xl transition backdrop-blur-md flex items-center gap-2">
+                        ✏️ Edit Student Info
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- OVERVIEW METRICS CARD -->
+            <div class="lg:col-span-2 bg-white dark:bg-brand-cardDark p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6">
+                <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-[8px] sm:text-[10px] uppercase tracking-wide text-slate-400 font-bold">Average Attendance</p>
-                        <p class="text-xs sm:text-base font-black text-slate-800">
-                            <span id="metric-total-att">{{ metrics.total_att if session.get('user_id') else '27' }}</span> / 
-                            <span id="metric-total-cond">{{ metrics.total_cond if session.get('user_id') else '37' }}</span>
+                        <span class="text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-md">
+                            Academic Status
+                        </span>
+                        <h3 class="text-xl font-black text-slate-900 dark:text-white mt-2">Overall Attendance Average</h3>
+                        <p id="live-dashboard-date" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-1 flex items-center gap-1">
+                            📅 Loading real-time calendar...
                         </p>
-                        <span class="text-[8px] sm:text-[10px] text-slate-400 font-medium">sessions</span>
+                    </div>
+
+                    <div class="text-right">
+                        <span class="text-3xl font-black text-indigo-600 dark:text-indigo-400" id="metric-percentage">
+                            {{ metrics.avg if session.get('user_id') else '78' }}%
+                        </span>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Semester Aggregate</p>
                     </div>
                 </div>
 
-                <!-- Defaulter Items Box -->
-                <div class="bg-rose-50/60 border border-rose-100 p-2.5 sm:p-4 rounded-2xl flex flex-col justify-center items-center sm:items-start text-center sm:text-left">
-                    <p class="text-[8px] sm:text-[10px] uppercase tracking-wide text-rose-500 font-black">Defaulter Items</p>
-                    <p class="text-xl sm:text-3xl font-black text-rose-600 mt-1" id="metric-defaulters">
-                        {{ metrics.defaulters if session.get('user_id') else '1' }}
-                    </p>
-                </div>
+                <!-- KEY PERFORMANCE METRICS GRID -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Total Conducted / Attended -->
+                    <div class="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl">
+                        <p class="text-[10px] uppercase tracking-wide text-slate-400 font-extrabold">Total Sessions</p>
+                        <p class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">
+                            <span id="metric-total-att">{{ metrics.total_att if session.get('user_id') else '42' }}</span> / 
+                            <span id="metric-total-cond">{{ metrics.total_cond if session.get('user_id') else '54' }}</span>
+                        </p>
+                        <span class="text-[10px] text-slate-400 font-medium">Attended vs Conducted</span>
+                    </div>
 
-                <!-- Safe Subjects Box -->
-                <div class="bg-emerald-50/60 border border-emerald-100 p-2.5 sm:p-4 rounded-2xl flex flex-col justify-center items-center sm:items-start text-center sm:text-left">
-                    <p class="text-[8px] sm:text-[10px] uppercase tracking-wide text-emerald-500 font-black">Safe Subjects</p>
-                    <p class="text-xl sm:text-3xl font-black text-emerald-600 mt-1" id="metric-safe">
-                        {{ metrics.safe if session.get('user_id') else '2' }}
-                    </p>
+                    <!-- Defaulters Count Box -->
+                    <div class="bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 p-4 rounded-2xl">
+                        <p class="text-[10px] uppercase tracking-wide text-rose-500 font-extrabold">Defaulter Warning</p>
+                        <p class="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1" id="metric-defaulters">
+                            {{ metrics.defaulters if session.get('user_id') else '1' }}
+                        </p>
+                        <span class="text-[10px] text-rose-500/80 font-medium">Subjects Below Target</span>
+                    </div>
+
+                    <!-- Safe Zone Count Box -->
+                    <div class="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 p-4 rounded-2xl">
+                        <p class="text-[10px] uppercase tracking-wide text-emerald-500 font-extrabold">Safe Zone</p>
+                        <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1" id="metric-safe">
+                            {{ metrics.safe if session.get('user_id') else '3' }}
+                        </p>
+                        <span class="text-[10px] text-emerald-500/80 font-medium">On Track Criteria</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANALYTICS VISUALIZATION CHART -->
+            <div class="bg-white dark:bg-brand-cardDark p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Attendance Breakdown</h4>
+                    <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold px-2 py-0.5 rounded">Live Chart</span>
+                </div>
+                <div class="relative h-44 flex items-center justify-center">
+                    <canvas id="attendanceDoughnutChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- TRACKED SUBJECTS SECTION HEADER -->
-        <div class="flex flex-wrap justify-between items-center gap-3 pt-2">
-            <h3 class="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
-                📚 Tracked Subjects 
-                <span class="bg-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-full font-bold" id="subject-count-badge">
-                    {{ subjects|length if session.get('user_id') else '3' }}
-                </span>
-            </h3>
-            <div class="flex items-center gap-2 text-xs w-full sm:w-auto">
-                <span class="text-slate-400 font-bold hidden xs:inline shrink-0">Filter:</span>
-                <select id="status-filter" class="bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4">
+            <div>
+                <h3 class="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    📚 Tracked Subjects
+                    <span class="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs px-2.5 py-1 rounded-full font-bold" id="subject-count-badge">
+                        {{ subjects|length if session.get('user_id') else '3' }}
+                    </span>
+                </h3>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">Manage counters, record session logs & track skip thresholds.</p>
+            </div>
+
+            <div class="flex items-center space-x-3 text-xs">
+                <label for="status-filter" class="text-slate-400 font-bold whitespace-nowrap">Filter By:</label>
+                <select id="status-filter" class="bg-white dark:bg-brand-cardDark border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-xl px-4 py-2 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                     <option value="All">All Subjects</option>
                     <option value="Safe">Safe Zone Only</option>
                     <option value="Defaulter">Defaulters Only</option>
@@ -154,30 +225,34 @@
             </div>
         </div>
 
-        <!-- SUBJECTS CARD GRID -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="subject-cards-grid">
             
             {% if session.get('user_id') %}
-                <!-- LOGGED IN STATE -->
                 {% if subjects %}
                     {% for sub in subjects %}
-                    <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all duration-200" data-status="{{ sub.calculated_status }}">
+                    <div class="bg-white dark:bg-brand-cardDark rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between space-y-5 hover:shadow-md transition-all duration-200" data-status="{{ sub.calculated_status }}">
                         <div>
-                            <!-- Title & Categories -->
-                            <div class="flex justify-between items-start">
+                            <!-- Header & Metadata -->
+                            <div class="flex justify-between items-start gap-2">
                                 <div>
-                                    <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                                        <span class="w-3 h-3 rounded-full {% if sub.calculated_status == 'Safe' %}bg-indigo-600{% else %}bg-rose-500{% endif %}"></span>
+                                    <h4 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full {% if sub.calculated_status == 'Safe' %}bg-emerald-500 shadow-glow-emerald{% else %}bg-rose-500 shadow-glow-rose{% endif %}"></span>
                                         {{ sub.subject_name }}
                                     </h4>
                                     <div class="flex flex-wrap items-center gap-2 mt-2">
-                                        <span class="text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-md">{{ sub.active_month }} Tracking</span>
-                                        <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-md">{{ sub.structure_type }}</span>
+                                        <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold px-2.5 py-1 rounded-lg">
+                                            🗓️ {{ sub.active_month }}
+                                        </span>
+                                        <span class="text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold px-2.5 py-1 rounded-lg">
+                                            ⚙️ {{ sub.structure_type }}
+                                        </span>
                                     </div>
                                 </div>
+
+                                <!-- Action Icons -->
                                 <div class="flex items-center space-x-1 text-slate-400">
                                     <button 
-                                        class="edit-subject-btn hover:bg-slate-100 p-2.5 rounded-lg transition text-base touch-manipulation"
+                                        class="edit-subject-btn hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-xl transition text-xs"
                                         data-id="{{ sub.id }}"
                                         data-name="{{ sub.subject_name }}"
                                         data-structure="{{ sub.structure_type }}"
@@ -193,7 +268,7 @@
                                         ✏️
                                     </button>
                                     <button 
-                                        class="delete-subject-btn hover:bg-rose-50 hover:text-rose-500 p-2.5 rounded-lg transition text-base touch-manipulation"
+                                        class="delete-subject-btn hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-500 p-2 rounded-xl transition text-xs"
                                         data-id="{{ sub.id }}"
                                         data-name="{{ sub.subject_name }}">
                                         🗑️
@@ -201,54 +276,54 @@
                                 </div>
                             </div>
 
-                            <!-- Progress Section -->
-                            <div class="bg-slate-50/50 rounded-2xl border border-slate-100 p-4 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                            <!-- Progress Ring & Interactive Counter Controls -->
+                            <div class="bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 p-4 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                                 
-                                <!-- Circular Progress Ring -->
+                                <!-- Percentage Ring -->
                                 <div class="flex flex-col items-center justify-center">
-                                    <div class="w-20 h-20 rounded-full flex flex-col items-center justify-center relative font-black text-xl border-4 {% if sub.calculated_status == 'Safe' %}border-emerald-500 text-emerald-600 bg-emerald-50/30{% else %}border-rose-500 text-rose-600 bg-rose-50/30{% endif %}">
+                                    <div class="w-20 h-20 rounded-full flex flex-col items-center justify-center relative font-black text-xl border-4 {% if sub.calculated_status == 'Safe' %}border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30{% else %}border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30{% endif %}">
                                         {{ sub.calculated_percentage }}%
-                                        <span class="text-[8px] font-bold text-slate-400 block absolute bottom-2">Goal: {{ sub.attendance_target }}%</span>
+                                        <span class="text-[8px] font-bold text-slate-400 block absolute bottom-2">Target: {{ sub.attendance_target }}%</span>
                                     </div>
                                 </div>
 
-                                <!-- Interactive Counters (Quick Minus with auto-decrements, Plus loads safe parameters popup) -->
-                                <div class="sm:col-span-2 space-y-3 text-xs font-semibold text-slate-600">
+                                <!-- Counters Panel -->
+                                <div class="sm:col-span-2 space-y-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
                                     {% if sub.structure_type == 'Theory Only' or sub.structure_type == 'Theory & Practical Both' %}
-                                    <div class="flex flex-col justify-center">
-                                        <p class="font-bold text-slate-400 text-[10px] uppercase mb-1">Theory Lectures ({{ sub.theory_attended }} / {{ sub.theory_conducted }} attended)</p>
-                                        <div class="flex items-center flex-wrap gap-3">
-                                            <div class="flex items-center space-x-2">
-                                                <span>Cond:</span>
-                                                <button onclick="modifyCounter('{{sub.id}}', 'theory_conducted', 'decrement')" class="bg-white border border-slate-200 w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-slate-100">-</button>
-                                                <span class="font-bold text-slate-900 px-1 min-w-[12px] text-center" id="theory_conducted-{{ sub.id }}">{{ sub.theory_conducted }}</span>
-                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'theory_conducted', 'Theory')" class="bg-indigo-600 text-white w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-indigo-700">+</button>
+                                    <div>
+                                        <p class="font-bold text-slate-400 text-[10px] uppercase mb-1">Theory ({{ sub.theory_attended }} / {{ sub.theory_conducted }})</p>
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center space-x-1">
+                                                <span class="text-[10px] text-slate-400">Cond:</span>
+                                                <button onclick="modifyCounter('{{sub.id}}', 'theory_conducted', 'decrement')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700">-</button>
+                                                <span class="font-black text-slate-900 dark:text-white px-1 text-center min-w-[16px]">{{ sub.theory_conducted }}</span>
+                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'theory_conducted')" class="bg-indigo-600 text-white w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-indigo-700">+</button>
                                             </div>
-                                            <div class="flex items-center space-x-2">
-                                                <span>Att:</span>
-                                                <button onclick="modifyCounter('{{sub.id}}', 'theory_attended', 'decrement')" class="bg-white border border-slate-200 w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-slate-100">-</button>
-                                                <span class="font-bold text-slate-900 px-1 min-w-[12px] text-center" id="theory_attended-{{ sub.id }}">{{ sub.theory_attended }}</span>
-                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'theory_attended', 'Theory')" class="bg-emerald-600 text-white w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-emerald-700">+</button>
+                                            <div class="flex items-center space-x-1">
+                                                <span class="text-[10px] text-slate-400">Att:</span>
+                                                <button onclick="modifyCounter('{{sub.id}}', 'theory_attended', 'decrement')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700">-</button>
+                                                <span class="font-black text-slate-900 dark:text-white px-1 text-center min-w-[16px]">{{ sub.theory_attended }}</span>
+                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'theory_attended')" class="bg-emerald-600 text-white w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-emerald-700">+</button>
                                             </div>
                                         </div>
                                     </div>
                                     {% endif %}
 
                                     {% if sub.structure_type == 'Practical Only' or sub.structure_type == 'Theory & Practical Both' %}
-                                    <div class="flex flex-col justify-center">
-                                        <p class="font-bold text-slate-400 text-[10px] uppercase mb-1">Practical Labs ({{ sub.labs_attended }} / {{ sub.labs_conducted }} attended)</p>
-                                        <div class="flex items-center flex-wrap gap-3">
-                                            <div class="flex items-center space-x-2">
-                                                <span>Cond:</span>
-                                                <button onclick="modifyCounter('{{sub.id}}', 'labs_conducted', 'decrement')" class="bg-white border border-slate-200 w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-slate-100">-</button>
-                                                <span class="font-bold text-slate-900 px-1 min-w-[12px] text-center" id="labs_conducted-{{ sub.id }}">{{ sub.labs_conducted }}</span>
-                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'labs_conducted', 'Practical')" class="bg-indigo-600 text-white w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-indigo-700">+</button>
+                                    <div>
+                                        <p class="font-bold text-slate-400 text-[10px] uppercase mb-1">Labs ({{ sub.labs_attended }} / {{ sub.labs_conducted }})</p>
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center space-x-1">
+                                                <span class="text-[10px] text-slate-400">Cond:</span>
+                                                <button onclick="modifyCounter('{{sub.id}}', 'labs_conducted', 'decrement')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700">-</button>
+                                                <span class="font-black text-slate-900 dark:text-white px-1 text-center min-w-[16px]">{{ sub.labs_conducted }}</span>
+                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'labs_conducted')" class="bg-indigo-600 text-white w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-indigo-700">+</button>
                                             </div>
-                                            <div class="flex items-center space-x-2">
-                                                <span>Att:</span>
-                                                <button onclick="modifyCounter('{{sub.id}}', 'labs_attended', 'decrement')" class="bg-white border border-slate-200 w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-slate-100">-</button>
-                                                <span class="font-bold text-slate-900 px-1 min-w-[12px] text-center" id="labs_attended-{{ sub.id }}">{{ sub.labs_attended }}</span>
-                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'labs_attended', 'Practical')" class="bg-emerald-600 text-white w-7 h-7 rounded-md flex items-center justify-center font-bold shadow-sm text-sm touch-manipulation active:scale-95 transition-transform hover:bg-emerald-700">+</button>
+                                            <div class="flex items-center space-x-1">
+                                                <span class="text-[10px] text-slate-400">Att:</span>
+                                                <button onclick="modifyCounter('{{sub.id}}', 'labs_attended', 'decrement')" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700">-</button>
+                                                <span class="font-black text-slate-900 dark:text-white px-1 text-center min-w-[16px]">{{ sub.labs_attended }}</span>
+                                                <button onclick="openSessionLogPopup('{{sub.id}}', 'labs_attended')" class="bg-emerald-600 text-white w-6 h-6 rounded-lg flex items-center justify-center font-bold shadow-sm hover:bg-emerald-700">+</button>
                                             </div>
                                         </div>
                                     </div>
@@ -257,114 +332,94 @@
                             </div>
                         </div>
 
-                        <!-- Guidance Message Box -->
-                        <div class="p-4 text-xs rounded-2xl border font-medium {% if sub.calculated_status == 'Safe' %}bg-emerald-50/50 border-emerald-100 text-emerald-800{% else %}bg-rose-50/50 border-rose-100 text-rose-850{% endif %}">
+                        <!-- Smart Guidance Message -->
+                        <div class="p-4 text-xs rounded-2xl border font-medium {% if sub.calculated_status == 'Safe' %}bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-300{% else %}bg-rose-50/70 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/50 text-rose-900 dark:text-rose-300{% endif %}">
                             <span class="font-black">
                                 {% if sub.calculated_status == 'Safe' %} ✔ Safe Zone Active {% else %} 🚨 Defaulter Warning Zone {% endif %}
                             </span>
-                            <p class="text-[11px] text-slate-600 mt-1 font-semibold leading-relaxed">{{ sub.calculated_message|safe }}</p>
+                            <p class="text-[11px] opacity-90 mt-1 leading-relaxed">{{ sub.calculated_message|safe }}</p>
                         </div>
                     </div>
                     {% endfor %}
                 {% else %}
-                    <!-- Clean empty state view -->
-                    <div class="col-span-1 md:col-span-2 text-center py-16 bg-white border border-dashed border-slate-200 rounded-3xl shadow-sm">
+                    <!-- Empty State -->
+                    <div class="col-span-1 md:col-span-2 text-center py-16 bg-white dark:bg-brand-cardDark border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
                         <div class="text-4xl mb-3">📂</div>
-                        <p class="text-slate-500 font-black text-lg">No subjects added yet!</p>
-                        <p class="text-slate-400 text-sm mt-1 mb-4">Click the "+ Add Subject" button at the top to start tracking your classes.</p>
+                        <p class="text-slate-700 dark:text-slate-200 font-black text-lg">No subjects added yet!</p>
+                        <p class="text-slate-400 text-sm mt-1">Click "+ Add Subject" to start building your tracker.</p>
                     </div>
                 {% endif %}
             {% else %}
-                <!-- LOGGED OUT PREVIEW STATE (Shows mock items for design reference) -->
-                <!-- Subject 1: Computational Theory -->
-                <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all duration-200" data-status="Safe">
+                <!-- DEMO MODE / MOCK CARDS -->
+                <div class="bg-white dark:bg-brand-cardDark rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between space-y-4" data-status="Safe">
                     <div>
                         <div class="flex justify-between items-start">
                             <div>
-                                <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                                    <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+                                <h4 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
                                     Computational Theory
                                 </h4>
-                                <div class="flex flex-wrap items-center gap-2 mt-2">
-                                    <span class="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md">February Tracking</span>
-                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-md">Theory Only</span>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold px-2.5 py-1 rounded-lg">February Tracking</span>
+                                    <span class="text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold px-2.5 py-1 rounded-lg">Theory Only</span>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="bg-slate-50/60 rounded-2xl border border-slate-100 p-4 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                        <div class="bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 p-4 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                             <div class="flex flex-col items-center justify-center">
-                                <div class="w-20 h-20 rounded-full flex flex-col items-center justify-center relative font-black text-xl border-4 border-emerald-500 text-emerald-600 bg-emerald-50/30">
+                                <div class="w-20 h-20 rounded-full flex flex-col items-center justify-center font-black text-xl border-4 border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50">
                                     80%
-                                    <span class="text-[8px] font-bold text-slate-400 block absolute bottom-2">Goal: 75%</span>
+                                    <span class="text-[8px] font-bold text-slate-400 block">Goal: 75%</span>
                                 </div>
                             </div>
-                            <div class="sm:col-span-2 space-y-3 text-xs font-semibold text-slate-600">
-                                <div class="flex flex-col justify-center">
-                                    <p class="font-bold text-slate-400 text-[10px] uppercase mb-1.5">Theory Lectures (8 / 10 attended)</p>
-                                    <div class="flex items-center flex-wrap gap-3">
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-slate-400">Cond:</span>
-                                            <span class="font-bold text-slate-900 px-1">10</span>
-                                        </div>
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-slate-400">Att:</span>
-                                            <span class="font-bold text-slate-900 px-1">8</span>
-                                        </div>
-                                    </div>
+                            <div class="sm:col-span-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                <p class="font-bold text-slate-400 text-[10px] uppercase mb-1">Theory (8 / 10 attended)</p>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-slate-400">Conducted: 10</span>
+                                    <span class="text-slate-400">Attended: 8</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="p-4 text-xs rounded-2xl border font-semibold bg-emerald-50/50 border-emerald-100 text-emerald-800">
-                        <span>✔ Safe Zone Active</span>
-                        <p class="text-[11px] text-slate-600 mt-1 font-normal leading-relaxed">Clear of the defaulter list! However, skipping even 1 future session will drop you below your 75% target.</p>
+                    <div class="p-4 text-xs rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300">
+                        <span class="font-black">✔ Safe Zone Active</span>
+                        <p class="text-[11px] opacity-90 mt-1">You can skip the next <strong>0</strong> session(s) without dropping below 75%.</p>
                     </div>
                 </div>
 
-                <!-- Subject 2: DBMS -->
-                <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all duration-200" data-status="Safe">
+                <div class="bg-white dark:bg-brand-cardDark rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between space-y-4" data-status="Defaulter">
                     <div>
                         <div class="flex justify-between items-start">
                             <div>
-                                <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                                    <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
-                                    DBMS
+                                <h4 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                                    Database Management Systems
                                 </h4>
-                                <div class="flex flex-wrap items-center gap-2 mt-2">
-                                    <span class="text-[10px] bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-md">February Tracking</span>
-                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-md">Theory & Practical</span>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold px-2.5 py-1 rounded-lg">February Tracking</span>
+                                    <span class="text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold px-2.5 py-1 rounded-lg">Theory & Practical</span>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="bg-slate-50/60 rounded-2xl border border-slate-100 p-4 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                        <div class="bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 p-4 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                             <div class="flex flex-col items-center justify-center">
-                                <div class="w-20 h-20 rounded-full flex flex-col items-center justify-center relative font-black text-xl border-4 border-emerald-500 text-emerald-600 bg-emerald-50/30">
-                                    76%
-                                    <span class="text-[8px] font-bold text-slate-400 block absolute bottom-2">Goal: 75%</span>
+                                <div class="w-20 h-20 rounded-full flex flex-col items-center justify-center font-black text-xl border-4 border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-50/50">
+                                    65%
+                                    <span class="text-[8px] font-bold text-slate-400 block">Goal: 75%</span>
                                 </div>
                             </div>
-                            <div class="sm:col-span-2 space-y-4 text-xs font-semibold text-slate-600">
-                                <div class="flex flex-col justify-center">
-                                    <p class="font-bold text-slate-400 text-[10px] uppercase mb-1">Theory Lectures (11 / 14 attended)</p>
-                                    <div class="flex items-center flex-wrap gap-3">
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-slate-400">Cond:</span>
-                                            <span class="font-bold text-slate-900 px-1">14</span>
-                                        </div>
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-slate-400">Att:</span>
-                                            <span class="font-bold text-slate-900 px-1">11</span>
-                                        </div>
-                                    </div>
+                            <div class="sm:col-span-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                <p class="font-bold text-slate-400 text-[10px] uppercase mb-1">Theory & Practical Combined</p>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-slate-400">Conducted: 20</span>
+                                    <span class="text-slate-400">Attended: 13</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="p-4 text-xs rounded-2xl border font-semibold bg-emerald-50/50 border-emerald-100 text-emerald-800">
-                        <span>✔ Safe Zone Active</span>
-                        <p class="text-[11px] text-slate-600 mt-1 font-normal leading-relaxed">Clear of the defaulter list! However, skipping even 1 future session will drop you below your 75% target.</p>
+                    <div class="p-4 text-xs rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 text-rose-800 dark:text-rose-300">
+                        <span class="font-black">🚨 Defaulter Warning Zone</span>
+                        <p class="text-[11px] opacity-90 mt-1">You must attend the next <strong>8</strong> session(s) consecutively to recover.</p>
                     </div>
                 </div>
             {% endif %}
@@ -372,115 +427,103 @@
         </div>
     </main>
 
-    <!-- FOOTER -->
-    <footer class="bg-brand-dark border-t border-purple-950/40 text-indigo-200 py-6 text-center text-xs mt-12">
-        <p>&copy; 2026 Smart Attendance Tracker. Direct Analysis & Academic Predictor Engine.</p>
+    <footer class="bg-white dark:bg-brand-cardDark border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-400 mt-12 transition-colors">
+        <p>&copy; 2026 Smart Attendance Tracker. Real-time Predictor & Academic Co-Pilot Engine.</p>
     </footer>
 
-    <!-- MODAL POPUP A: SIGN-IN & REGISTRATION OVERLAY -->
     <div id="auth-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center p-4 {% if session.get('user_id') %}hidden{% endif %}">
-        <div class="bg-white p-8 rounded-3xl border border-slate-100 w-full max-w-md shadow-2xl relative">
-            <div class="flex border-b border-slate-100 font-black text-center text-lg mb-6">
+        <div class="bg-white dark:bg-brand-cardDark p-8 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-md shadow-2xl relative">
+            <div class="flex border-b border-slate-200 dark:border-slate-800 font-black text-center text-lg mb-6">
                 <button id="nav-login-tab" class="w-1/2 pb-3 text-indigo-600 border-b-2 border-indigo-600 outline-none">Sign In</button>
-                <button id="nav-register-tab" class="w-1/2 pb-3 text-slate-400 hover:text-slate-600 border-b-2 border-transparent outline-none">Create Account</button>
+                <button id="nav-register-tab" class="w-1/2 pb-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-b-2 border-transparent outline-none">Create Account</button>
             </div>
             
-            <!-- Login pane -->
+            <!-- Login Form Pane -->
             <form id="pane-login" action="/auth/login" method="POST" class="space-y-4">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Email Address</label>
-                    <input type="email" name="email" required placeholder="e.g., jagan@example.com" class="w-full border border-slate-200 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Email Address</label>
+                    <input type="email" name="email" required placeholder="e.g., student@university.edu" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Password</label>
-                    <input type="password" name="password" required placeholder="••••••••" class="w-full border border-slate-200 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Password</label>
+                    <input type="password" name="password" required placeholder="••••••••" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                 </div>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition touch-manipulation shadow-lg mt-2">
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-glow mt-2">
                     Access Dashboard
                 </button>
             </form>
 
-            <!-- Register pane -->
+            <!-- Register Form Pane -->
             <form id="pane-register" action="/auth/register" method="POST" class="space-y-4 hidden">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Full Name</label>
-                    <input type="text" name="fullname" required placeholder="Jagannath Ansurkar" class="w-full border border-slate-200 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Full Name</label>
+                    <input type="text" name="fullname" required placeholder="Jagannath Ansurkar" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Email Address</label>
-                    <input type="email" name="email" required placeholder="jagan@example.com" class="w-full border border-slate-200 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Email Address</label>
+                    <input type="email" name="email" required placeholder="student@university.edu" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Password</label>
-                    <input type="password" name="password" required placeholder="••••••••" class="w-full border border-slate-200 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Password</label>
+                    <input type="password" name="password" required placeholder="••••••••" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Department</label>
-                        <input type="text" name="department" value="Computer Engineering" class="w-full border border-slate-200 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Department</label>
+                        <input type="text" name="department" value="Computer Engineering" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Semester</label>
-                        <input type="text" name="semester" value="Semester 6" class="w-full border border-slate-200 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Semester</label>
+                        <input type="text" name="semester" value="Semester 6" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition touch-manipulation shadow-lg mt-2">
-                    Initialize Account
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition shadow-glow-emerald mt-2">
+                    Register & Initialize Account
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- MODAL POPUP B: ADD NEW SUBJECT MODAL -->
-    <div id="subject-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform transition-all duration-300">
+    <div id="subject-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-brand-cardDark rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden">
             <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
                 <div>
                     <h3 class="text-xl font-black">Add New Subject</h3>
-                    <p class="text-xs text-indigo-200 mt-0.5">Configure parameters, month metrics & limits.</p>
+                    <p class="text-xs text-indigo-200 mt-0.5">Configure parameters and target limits.</p>
                 </div>
-                <button id="close-subject-modal-x" class="text-2xl font-bold opacity-75 hover:opacity-100 transition focus:outline-none">&times;</button>
+                <button id="close-subject-modal-x" class="text-2xl font-bold opacity-75 hover:opacity-100 transition">&times;</button>
             </div>
             
             <form action="/add_subject" method="POST" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Subject Name</label>
-                    <input type="text" name="subject_name" required placeholder="e.g., Computational Theory" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Subject Name</label>
+                    <input type="text" name="subject_name" required placeholder="e.g., Operating Systems" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Subject Structure Type</label>
-                    <select name="structure_type" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Structure Type</label>
+                    <select name="structure_type" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                         <option value="Theory & Practical Both">Theory & Practical Both</option>
                         <option value="Theory Only">Theory Only</option>
                         <option value="Practical Only">Practical Only</option>
                     </select>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Active Month</label>
-                        <select name="active_month" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Active Month</label>
+                        <select name="active_month" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                             <option value="January">January</option>
                             <option value="February" selected>February</option>
                             <option value="March">March</option>
                             <option value="April">April</option>
                             <option value="May">May</option>
                             <option value="June">June</option>
-                            <option value="July">July</option>
-                            <option value="August">August</option>
-                            <option value="September">September</option>
-                            <option value="October">October</option>
-                            <option value="November">November</option>
-                            <option value="December">December</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Color Theme</label>
-                        <select name="color_theme" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Color Theme</label>
+                        <select name="color_theme" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
                             <option value="indigo">Indigo Glow</option>
                             <option value="rose">Crimson Fire</option>
                             <option value="emerald">Emerald Forest</option>
@@ -488,105 +531,86 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
-                        <input type="date" name="start_date" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
-                        <input type="date" name="end_date" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
-                    </div>
-                </div>
-
                 <div>
                     <div class="flex justify-between items-center mb-1">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Attendance Target</label>
-                        <span id="target-value" class="text-xs bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-md">75%</span>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Attendance Target</label>
+                        <span id="target-value" class="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold px-2 py-0.5 rounded">75%</span>
                     </div>
                     <input type="range" name="attendance_target" min="50" max="100" value="75" oninput="document.getElementById('target-value').innerText = this.value + '%'" class="w-full accent-indigo-600">
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                <div class="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Theory Conducted</label>
-                        <input type="number" name="theory_conducted" value="0" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Theory Conducted</label>
+                        <input type="number" name="theory_conducted" value="0" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Theory Attended</label>
-                        <input type="number" name="theory_attended" value="0" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Theory Attended</label>
+                        <input type="number" name="theory_attended" value="0" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Labs Conducted</label>
-                        <input type="number" name="labs_conducted" value="0" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Labs Conducted</label>
+                        <input type="number" name="labs_conducted" value="0" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Labs Attended</label>
-                        <input type="number" name="labs_attended" value="0" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Labs Attended</label>
+                        <input type="number" name="labs_attended" value="0" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                 </div>
 
                 <div class="flex space-x-3 pt-2">
-                    <button type="button" id="close-subject-modal" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition touch-manipulation">Cancel</button>
-                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition touch-manipulation shadow-md">Save Subject</button>
+                    <button type="button" id="close-subject-modal" class="w-1/2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl transition">Cancel</button>
+                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-glow">Save Subject</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL POPUP C: EDIT SUBJECT MODAL -->
-    <div id="edit-subject-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform transition-all duration-300">
+    <div id="edit-subject-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-brand-cardDark rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden">
             <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
                 <div>
-                    <h3 class="text-xl font-black">Edit Subject</h3>
-                    <p class="text-xs text-indigo-200 mt-0.5">Modify parameters for this subject.</p>
+                    <h3 class="text-xl font-black">Edit Subject Parameters</h3>
+                    <p class="text-xs text-indigo-200 mt-0.5">Update recorded sessions or target thresholds.</p>
                 </div>
-                <button id="close-edit-modal-x" class="text-2xl font-bold opacity-75 hover:opacity-100 transition focus:outline-none">&times;</button>
+                <button id="close-edit-modal-x" class="text-2xl font-bold opacity-75 hover:opacity-100 transition">&times;</button>
             </div>
             
             <form action="/edit_subject" method="POST" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="subject_id" id="edit-sub-id">
                 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Subject Name</label>
-                    <input type="text" name="subject_name" id="edit-sub-name" required class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Subject Name</label>
+                    <input type="text" name="subject_name" id="edit-sub-name" required class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Subject Structure Type</label>
-                    <select name="structure_type" id="edit-sub-structure" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Structure Type</label>
+                    <select name="structure_type" id="edit-sub-structure" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                         <option value="Theory & Practical Both">Theory & Practical Both</option>
                         <option value="Theory Only">Theory Only</option>
                         <option value="Practical Only">Practical Only</option>
                     </select>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Active Month</label>
-                        <select name="active_month" id="edit-sub-month" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Active Month</label>
+                        <select name="active_month" id="edit-sub-month" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                             <option value="January">January</option>
                             <option value="February">February</option>
                             <option value="March">March</option>
                             <option value="April">April</option>
                             <option value="May">May</option>
                             <option value="June">June</option>
-                            <option value="July">July</option>
-                            <option value="August">August</option>
-                            <option value="September">September</option>
-                            <option value="October">October</option>
-                            <option value="November">November</option>
-                            <option value="December">December</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Color Theme</label>
-                        <select name="color_theme" id="edit-sub-theme" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Color Theme</label>
+                        <select name="color_theme" id="edit-sub-theme" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                             <option value="indigo">Indigo Glow</option>
                             <option value="rose">Crimson Fire</option>
                             <option value="emerald">Emerald Forest</option>
@@ -594,108 +618,93 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
-                        <input type="date" name="start_date" id="edit-sub-start" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
-                        <input type="date" name="end_date" id="edit-sub-end" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
-                    </div>
-                </div>
-
                 <div>
                     <div class="flex justify-between items-center mb-1">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Attendance Target</label>
-                        <span id="edit-target-value" class="text-xs bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-md">75%</span>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Attendance Target</label>
+                        <span id="edit-target-value" class="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold px-2 py-0.5 rounded">75%</span>
                     </div>
                     <input type="range" name="attendance_target" id="edit-sub-target" min="50" max="100" oninput="document.getElementById('edit-target-value').innerText = this.value + '%'" class="w-full accent-indigo-600">
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                <div class="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Theory Conducted</label>
-                        <input type="number" name="theory_conducted" id="edit-sub-theory-cond" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Theory Conducted</label>
+                        <input type="number" name="theory_conducted" id="edit-sub-theory-cond" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Theory Attended</label>
-                        <input type="number" name="theory_attended" id="edit-sub-theory-att" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Theory Attended</label>
+                        <input type="number" name="theory_attended" id="edit-sub-theory-att" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Labs Conducted</label>
-                        <input type="number" name="labs_conducted" id="edit-sub-labs-cond" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Labs Conducted</label>
+                        <input type="number" name="labs_conducted" id="edit-sub-labs-cond" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Labs Attended</label>
-                        <input type="number" name="labs_attended" id="edit-sub-labs-att" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Labs Attended</label>
+                        <input type="number" name="labs_attended" id="edit-sub-labs-att" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-sm">
                     </div>
                 </div>
 
                 <div class="flex space-x-3 pt-2">
-                    <button type="button" id="close-edit-modal" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition touch-manipulation">Cancel</button>
-                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition touch-manipulation shadow-md">Update Subject</button>
+                    <button type="button" id="close-edit-modal" class="w-1/2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl">Cancel</button>
+                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-glow">Update Subject</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL POPUP D: EDIT PROFILE MODAL -->
-    <div id="profile-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden">
+    <div id="profile-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-brand-cardDark rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden">
             <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
                 <div>
                     <h3 class="text-xl font-black">Edit Student Profile</h3>
-                    <p class="text-xs text-indigo-200 mt-0.5">Customize your displayed meta fields.</p>
+                    <p class="text-xs text-indigo-200 mt-0.5">Customize display credentials.</p>
                 </div>
-                <button id="close-profile-modal-x" class="text-2xl font-bold opacity-75 hover:opacity-100 transition focus:outline-none">&times;</button>
+                <button id="close-profile-modal-x" class="text-2xl font-bold opacity-75 hover:opacity-100 transition">&times;</button>
             </div>
             
             <form action="/edit_profile" method="POST" class="p-6 space-y-4">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name</label>
-                    <input type="text" name="fullname" value="{{ session.get('fullname', '') }}" required class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Full Name</label>
+                    <input type="text" name="fullname" value="{{ session.get('fullname', '') }}" required class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Department Name</label>
-                    <input type="text" name="department" value="{{ session.get('department', '') }}" required class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Department</label>
+                    <input type="text" name="department" value="{{ session.get('department', '') }}" required class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Semester Designation</label>
-                    <input type="text" name="semester" value="{{ session.get('semester', '') }}" required class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Semester</label>
+                    <input type="text" name="semester" value="{{ session.get('semester', '') }}" required class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                 </div>
                 
                 <div class="flex space-x-3 pt-2">
-                    <button type="button" id="close-profile-modal" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition touch-manipulation">Cancel</button>
-                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition touch-manipulation shadow-md">Apply Edits</button>
+                    <button type="button" id="close-profile-modal" class="w-1/2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl">Cancel</button>
+                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-glow">Apply Edits</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- NEW MODAL POPUP E: LOG SESSION DETAILS (Matches image_54cb62.png form standards) -->
-    <div id="session-log-modal" class="fixed inset-0 bg-slate-950/45 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden transform transition-all duration-300">
+    <div id="session-log-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-brand-cardDark rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden">
             <div class="bg-indigo-600 p-5 text-white">
-                <h3 class="text-lg font-black flex items-center gap-2">📝 Log Lecture Details</h3>
-                <p class="text-xs text-indigo-200 mt-0.5">Specify when this session took place.</p>
+                <h3 class="text-lg font-black flex items-center gap-2">📝 Log Session Details</h3>
+                <p class="text-xs text-indigo-200 mt-0.5">Record exact session timing for analytics history.</p>
             </div>
             <div class="p-5 space-y-4">
-                <!-- Hidden inputs to store metadata context -->
                 <input type="hidden" id="log-subject-id">
                 <input type="hidden" id="log-field-name">
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Lecture Date</label>
-                    <input type="date" id="log-lecture-date" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Lecture Date</label>
+                    <input type="date" id="log-lecture-date" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Time Slot</label>
-                    <select id="log-time-slot" class="w-full border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-700 bg-white">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Time Slot</label>
+                    <select id="log-time-slot" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl outline-none text-sm font-semibold">
                         <option value="09:00 AM - 10:00 AM" selected>09:00 AM - 10:00 AM</option>
                         <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
                         <option value="11:15 AM - 12:15 PM">11:15 AM - 12:15 PM</option>
@@ -706,39 +715,60 @@
                     </select>
                 </div>
                 <div class="flex space-x-3 pt-2">
-                    <button type="button" onclick="toggleModal('session-log-modal', false)" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition touch-manipulation">Cancel</button>
-                    <button type="button" onclick="submitSessionLog()" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md">Confirm +1</button>
+                    <button type="button" onclick="toggleModal('session-log-modal', false)" class="w-1/2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+                    <button type="button" onclick="submitSessionLog()" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-glow">Confirm +1</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- NEW MODAL POPUP F: CUSTOM DELETE CONFIRMATION OVERLAY -->
-    <div id="delete-confirm-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden transform transition-all duration-300">
+    <div id="delete-confirm-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-brand-cardDark rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden">
             <div class="p-6 space-y-4">
-                <h3 class="text-lg font-black text-slate-900">Confirm Deletion</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Are you sure you want to delete <span id="delete-sub-name-placeholder" class="font-extrabold text-slate-800"></span>? This action is permanent and cannot be undone.</p>
+                <h3 class="text-lg font-black text-slate-900 dark:text-white">Confirm Deletion</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Are you sure you want to delete <span id="delete-sub-name-placeholder" class="font-bold text-slate-800 dark:text-slate-200"></span>? This action cannot be undone.</p>
                 <div class="flex space-x-3 pt-2">
-                    <button type="button" onclick="toggleModal('delete-confirm-modal', false)" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition touch-manipulation">Cancel</button>
-                    <button type="button" id="confirm-delete-btn" class="w-1/2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md">Confirm Delete</button>
+                    <button type="button" onclick="toggleModal('delete-confirm-modal', false)" class="w-1/2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+                    <button type="button" id="confirm-delete-btn" class="w-1/2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-glow-rose">Confirm Delete</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- CUSTOM BANNER ALERTS / TOAST NOTIFICATION CONTAINER -->
-    <div id="custom-toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2">
-        <span id="toast-icon">ℹ️</span>
+    <div id="custom-toast" class="fixed bottom-5 right-5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2">
+        <span id="toast-icon">✨</span>
         <span id="toast-message">Notification Message</span>
     </div>
 
-    <!-- JAVASCRIPT CONTROLLER CORE -->
     <script>
-        // CSRF token for AJAX (fetch) requests — Flask-WTF checks this header
-        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const themeBtn = document.getElementById('theme-toggle-btn');
+        const themeIcon = document.getElementById('theme-toggle-icon');
 
-        // Real-Time Calendar Date Widget Handler
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                if(themeIcon) themeIcon.innerText = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark');
+                if(themeIcon) themeIcon.innerText = '🌙';
+            }
+        }
+        initTheme();
+
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                    themeIcon.innerText = '🌙';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                    themeIcon.innerText = '☀️';
+                }
+            });
+        }
+
         function updateDashboardDate() {
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             const today = new Date();
@@ -750,7 +780,6 @@
         }
         updateDashboardDate();
 
-        // Premium Toast Banner handler to satisfy absolute alert bypass criteria
         function showToast(message, isError = false) {
             const toast = document.getElementById('custom-toast');
             const icon = document.getElementById('toast-icon');
@@ -760,22 +789,50 @@
             msgEl.innerText = message;
             icon.innerText = isError ? "🚨" : "✨";
             
-            if (isError) {
-                toast.className = toast.className.replace('bg-slate-900', 'bg-rose-600');
-            } else {
-                toast.className = toast.className.replace('bg-rose-600', 'bg-slate-900');
-            }
-            
             toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
             toast.classList.add('translate-y-0', 'opacity-100');
             
             setTimeout(() => {
                 toast.classList.remove('translate-y-0', 'opacity-100');
                 toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
-            }, 4000);
+            }, 3500);
         }
 
-        // Authentication tab selectors
+        document.addEventListener('DOMContentLoaded', () => {
+            const chartCtx = document.getElementById('attendanceDoughnutChart');
+            if (chartCtx) {
+                const safeCount = parseInt(document.getElementById('metric-safe')?.innerText || '3');
+                const defaulterCount = parseInt(document.getElementById('metric-defaulters')?.innerText || '1');
+
+                new Chart(chartCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Safe Zone', 'Defaulter Zone'],
+                        datasets: [{
+                            data: [safeCount, defaulterCount],
+                            backgroundColor: ['#10b981', '#f43f5e'],
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    font: { size: 10, weight: 'bold' },
+                                    color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#475569'
+                                }
+                            }
+                        },
+                        cutout: '70%'
+                    }
+                });
+            }
+        });
+
         const tabLogin = document.getElementById('nav-login-tab');
         const tabRegister = document.getElementById('nav-register-tab');
         const paneLogin = document.getElementById('pane-login');
@@ -797,7 +854,6 @@
             });
         }
 
-        // Modal Controls Definition
         function toggleModal(modalId, displayState) {
             const el = document.getElementById(modalId);
             if(el) {
@@ -806,33 +862,17 @@
             }
         }
 
-        // Add Subject Modal triggers
-        const btnAddSub = document.getElementById('open-subject-modal');
-        if(btnAddSub) {
-            btnAddSub.addEventListener('click', () => toggleModal('subject-modal', true));
-        }
-        const btnCloseAddX = document.getElementById('close-subject-modal-x');
-        if(btnCloseAddX) btnCloseAddX.addEventListener('click', () => toggleModal('subject-modal', false));
-        const btnCloseAdd = document.getElementById('close-subject-modal');
-        if(btnCloseAdd) btnCloseAdd.addEventListener('click', () => toggleModal('subject-modal', false));
+        // Modal Trigger Listeners
+        document.getElementById('open-subject-modal')?.addEventListener('click', () => toggleModal('subject-modal', true));
+        document.getElementById('close-subject-modal-x')?.addEventListener('click', () => toggleModal('subject-modal', false));
+        document.getElementById('close-subject-modal')?.addEventListener('click', () => toggleModal('subject-modal', false));
 
-        // Edit Profile Modal triggers
-        const btnEditProfile = document.getElementById('edit-profile-btn');
-        if(btnEditProfile) {
-            btnEditProfile.addEventListener('click', () => toggleModal('profile-modal', true));
-        }
-        const btnCloseProfX = document.getElementById('close-profile-modal-x');
-        if(btnCloseProfX) btnCloseProfX.addEventListener('click', () => toggleModal('profile-modal', false));
-        const btnCloseProf = document.getElementById('close-profile-modal');
-        if(btnCloseProf) btnCloseProf.addEventListener('click', () => toggleModal('profile-modal', false));
+        document.getElementById('edit-profile-btn')?.addEventListener('click', () => toggleModal('profile-modal', true));
+        document.getElementById('close-profile-modal-x')?.addEventListener('click', () => toggleModal('profile-modal', false));
+        document.getElementById('close-profile-modal')?.addEventListener('click', () => toggleModal('profile-modal', false));
 
-        // Sign In Trigger for guest state overlay
-        const btnTriggerAuth = document.getElementById('trigger-auth');
-        if (btnTriggerAuth) {
-            btnTriggerAuth.addEventListener('click', () => toggleModal('auth-modal', true));
-        }
+        document.getElementById('trigger-auth')?.addEventListener('click', () => toggleModal('auth-modal', true));
 
-        // Subject status cards filters
         const statusFilter = document.getElementById('status-filter');
         if(statusFilter) {
             statusFilter.addEventListener('change', (e) => {
@@ -849,7 +889,6 @@
             });
         }
 
-        // Open detailed date/time log popup for incrementing classes (+ triggers)
         function openSessionLogPopup(subjectId, fieldName) {
             const subIdEl = document.getElementById('log-subject-id');
             const fieldEl = document.getElementById('log-field-name');
@@ -858,16 +897,11 @@
             if(subIdEl && fieldEl && dateEl) {
                 subIdEl.value = subjectId;
                 fieldEl.value = fieldName;
-                
-                // Pre-populate with local ISO format date
-                const today = new Date().toISOString().split('T')[0];
-                dateEl.value = today;
-                
+                dateEl.value = new Date().toISOString().split('T')[0];
                 toggleModal('session-log-modal', true);
             }
         }
 
-        // Submit attendance increment session data via AJAX
         function submitSessionLog() {
             const subjectId = document.getElementById('log-subject-id').value;
             const fieldName = document.getElementById('log-field-name').value;
@@ -875,15 +909,13 @@
             const selectedTime = document.getElementById('log-time-slot').value;
 
             if(!selectedDate || !selectedTime) {
-                showToast("Please enter dynamic date and time parameters.", true);
+                showToast("Please select date and time.", true);
                 return;
             }
 
-            // Map frontend field inputs to correct Flask update actions
-            // The frontend increments 'theory_conducted' (meaning missed) or 'theory_attended' (attended)
             fetch('/update_counter', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     subject_id: subjectId,
                     field: fieldName,
@@ -896,23 +928,19 @@
             .then(data => {
                 if (data.success) {
                     toggleModal('session-log-modal', false);
-                    showToast("Attendance parameter updated successfully!");
-                    setTimeout(() => location.reload(), 800);
+                    showToast("Session logged successfully!");
+                    setTimeout(() => location.reload(), 600);
                 } else {
-                    showToast(data.error || "Failed to update counter.", true);
+                    showToast(data.error || "Update failed.", true);
                 }
             })
-            .catch(err => {
-                console.error("AJAX error updating metrics: ", err);
-                showToast("System synchronization timeout.", true);
-            });
+            .catch(() => showToast("Network synchronization timeout.", true));
         }
 
-        // Interactive decrements without page reloading (AJAX via fetch)
         function modifyCounter(subjectId, fieldName, counterAction) {
             fetch('/update_counter', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     subject_id: subjectId,
                     field: fieldName,
@@ -922,29 +950,22 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    showToast("Attendance parameter adjusted.");
+                    showToast("Counter updated.");
                     setTimeout(() => location.reload(), 500);
                 } else {
-                    showToast(data.error || "Constraint boundary conflict encountered.", true);
+                    showToast(data.error || "Action failed.", true);
                 }
             })
-            .catch(err => {
-                console.error("AJAX error: ", err);
-                showToast("Database update error.", true);
-            });
+            .catch(() => showToast("Update error.", true));
         }
 
-        // Handle Edit Subject form mapping
-        const editButtons = document.querySelectorAll('.edit-subject-btn');
-        editButtons.forEach(btn => {
+        document.querySelectorAll('.edit-subject-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.getElementById('edit-sub-id').value = btn.getAttribute('data-id');
                 document.getElementById('edit-sub-name').value = btn.getAttribute('data-name');
                 document.getElementById('edit-sub-structure').value = btn.getAttribute('data-structure');
                 document.getElementById('edit-sub-month').value = btn.getAttribute('data-month');
                 document.getElementById('edit-sub-theme').value = btn.getAttribute('data-theme');
-                document.getElementById('edit-sub-start').value = btn.getAttribute('data-start') || '';
-                document.getElementById('edit-sub-end').value = btn.getAttribute('data-end') || '';
                 
                 const targetVal = btn.getAttribute('data-target') || '75';
                 document.getElementById('edit-sub-target').value = targetVal;
@@ -959,69 +980,40 @@
             });
         });
 
-        // Close Edit modal handles
-        const btnCloseEditX = document.getElementById('close-edit-modal-x');
-        if(btnCloseEditX) btnCloseEditX.addEventListener('click', () => toggleModal('edit-subject-modal', false));
-        const btnCloseEdit = document.getElementById('close-edit-modal');
-        if(btnCloseEdit) btnCloseEdit.addEventListener('click', () => toggleModal('edit-subject-modal', false));
+        document.getElementById('close-edit-modal-x')?.addEventListener('click', () => toggleModal('edit-subject-modal', false));
+        document.getElementById('close-edit-modal')?.addEventListener('click', () => toggleModal('edit-subject-modal', false));
 
-        // Delete subject button logic using secure custom HTML overlay (bypassing native confirm)
-        const deleteButtons = document.querySelectorAll('.delete-subject-btn');
         let pendingDeleteId = null;
 
-        deleteButtons.forEach(btn => {
+        document.querySelectorAll('.delete-subject-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 pendingDeleteId = btn.getAttribute('data-id');
                 const subjectName = btn.getAttribute('data-name');
-                
                 const placeholder = document.getElementById('delete-sub-name-placeholder');
-                if (placeholder) {
-                    placeholder.innerText = `"${subjectName}"`;
-                }
-                
+                if (placeholder) placeholder.innerText = `"${subjectName}"`;
                 toggleModal('delete-confirm-modal', true);
             });
         });
 
-        // Wire confirm delete action button inside custom confirmation modal
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', () => {
-                if (pendingDeleteId) {
-                    const formData = new FormData();
-                    formData.append('subject_id', pendingDeleteId);
+        document.getElementById('confirm-delete-btn')?.addEventListener('click', () => {
+            if (pendingDeleteId) {
+                const formData = new FormData();
+                formData.append('subject_id', pendingDeleteId);
 
-                    fetch('/delete_subject', {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': CSRF_TOKEN },
-                        body: formData
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        toggleModal('delete-confirm-modal', false);
-                        if (data.success) {
-                            showToast("Subject deleted successfully.");
-                            setTimeout(() => location.reload(), 800);
-                        } else {
-                            showToast(data.error || "Could not complete subject deletion.", true);
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        showToast("Deletion request failed.", true);
-                    });
-                }
-            });
-        }
-
-        // Register the Service Worker for PWA installation
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/service-worker.js')
-                    .then(reg => console.log('Service Worker registered successfully!', reg.scope))
-                    .catch(err => console.log('Service Worker registration failed:', err));
-            });
-        }
+                fetch('/delete_subject', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    toggleModal('delete-confirm-modal', false);
+                    if (data.success) {
+                        showToast("Subject removed.");
+                        setTimeout(() => location.reload(), 600);
+                    } else {
+                        showToast(data.error || "Deletion failed.", true);
+                    }
+                })
+                .catch(() => showToast("Deletion error.", true));
+            }
+        });
     </script>
 </body>
 </html>
